@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pygame
 
-# Dimensions requested by the user
+# Størrelser og layout
 GAME_SIZE = 85*7
 BORDER = 5*7
 SCOREBOARD_HEIGHT = 15*7
@@ -15,7 +15,7 @@ WINDOW_HEIGHT = SCOREBOARD_HEIGHT + BORDER + GAME_SIZE + BORDER
 PLAYFIELD_X = BORDER
 PLAYFIELD_Y = SCOREBOARD_HEIGHT + BORDER
 
-# Speeds / colors
+# fps og farver
 FPS = 7
 WHITE = (245, 245, 245)
 BLACK = (20, 20, 20)
@@ -26,11 +26,9 @@ FOOD_COLOR = (0, 255, 0)
 BORDER_COLOR = (190, 140, 255)
 GAME_OVER_BG = (50, 0, 70)
 
-# Try several likely image locations
+# baggrund
 BACKGROUND_CANDIDATES = [
     Path("pixil-frame-0.png"),
-    Path("/mnt/data/user-vvg4mIgGLnnmhq7ivs1vbw4A/e71845d21f61425c82259a8a693cfa3c/mnt/data/pixil-frame-0.png"),
-    Path(__file__).with_name("pixil-frame-0.png"),
 ]
 
 
@@ -169,9 +167,9 @@ class SnakeGame:
             line3 = self.font.render("Q/Esc = quit", True, WHITE)
             cx = PLAYFIELD_X + GAME_SIZE // 2
             cy = PLAYFIELD_Y + GAME_SIZE // 2
-            self.screen.blit(line1, (cx - line1.get_width() // 2, cy - 18))
-            self.screen.blit(line2, (cx - line2.get_width() // 2, cy - 4))
-            self.screen.blit(line3, (cx - line3.get_width() // 2, cy + 8))
+            self.screen.blit(line1, (cx - line1.get_width() // 2, cy - 30))
+            self.screen.blit(line2, (cx - line2.get_width() // 2, cy))
+            self.screen.blit(line3, (cx - line3.get_width() // 2, cy + 30))
 
         pygame.display.flip()
 
