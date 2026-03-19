@@ -5,10 +5,10 @@ from pathlib import Path
 import pygame
 
 # Størrelser og layout
-GAME_SIZE = 85*7
-BORDER = 5*7
-SCOREBOARD_HEIGHT = 15*7
-CELL_SIZE = 5*7  # (17x17)*7 grid inden i (85x85)*7 game
+GAME_SIZE = 85 * 7
+BORDER = 5 * 7
+SCOREBOARD_HEIGHT = 15 * 7
+CELL_SIZE = 5 * 7  # (17x17)*7 grid inden i (85x85)*7 game
 
 WINDOW_WIDTH = GAME_SIZE + BORDER * 2
 WINDOW_HEIGHT = SCOREBOARD_HEIGHT + BORDER + GAME_SIZE + BORDER
@@ -70,6 +70,10 @@ class SnakeGame:
         self.next_direction = self.direction
         self.score = 0
         self.game_over = False
+
+        # start time for this run
+        self.start_ticks = pygame.time.get_ticks()
+
         self.spawn_food()
 
     def spawn_food(self):
@@ -115,11 +119,25 @@ class SnakeGame:
         # Hit wall
         if not (0 <= new_head[0] < GAME_SIZE and 0 <= new_head[1] < GAME_SIZE):
             self.game_over = True
+
+            run_time = (pygame.time.get_ticks() - self.start_ticks) / 1000
+            score = self.score
+
+            with open("game.log", "a") as f:
+                f.write(f"Run time: {run_time:.2f} seconds, Score: {score}\n")
+
             return
 
         # Hit self
         if new_head in self.snake:
             self.game_over = True
+
+            run_time = (pygame.time.get_ticks() - self.start_ticks) / 1000
+            score = self.score
+
+            with open("game.log", "a") as f:
+                f.write(f"Run time: {run_time:.2f} seconds, Score: {score}\n")
+
             return
 
         self.snake.insert(0, new_head)
@@ -134,7 +152,12 @@ class SnakeGame:
         self.screen.blit(self.background, (0, 0))
 
         # Reinforce the requested layout so it is visible over the background.
-        pygame.draw.rect(self.screen, BORDER_COLOR, (0, SCOREBOARD_HEIGHT, WINDOW_WIDTH, WINDOW_HEIGHT - SCOREBOARD_HEIGHT), BORDER)
+        pygame.draw.rect(
+            self.screen,
+            BORDER_COLOR,
+            (0, SCOREBOARD_HEIGHT, WINDOW_WIDTH, WINDOW_HEIGHT - SCOREBOARD_HEIGHT),
+            BORDER
+        )
 
         # Transparent-ish board overlay effect using a surface.
         board_overlay = pygame.Surface((GAME_SIZE, GAME_SIZE), pygame.SRCALPHA)
@@ -148,13 +171,23 @@ class SnakeGame:
         self.screen.blit(controls_text, (WINDOW_WIDTH - controls_text.get_width() - 4, 2))
 
         # Food
-        food_rect = pygame.Rect(PLAYFIELD_X + self.food[0], PLAYFIELD_Y + self.food[1], CELL_SIZE, CELL_SIZE)
+        food_rect = pygame.Rect(
+            PLAYFIELD_X + self.food[0],
+            PLAYFIELD_Y + self.food[1],
+            CELL_SIZE,
+            CELL_SIZE
+        )
         pygame.draw.rect(self.screen, FOOD_COLOR, food_rect)
 
         # Snake
         for i, (x, y) in enumerate(self.snake):
             color = HEAD_COLOR if i == 0 else SNAKE_COLOR
-            rect = pygame.Rect(PLAYFIELD_X + x, PLAYFIELD_Y + y, CELL_SIZE, CELL_SIZE)
+            rect = pygame.Rect(
+                PLAYFIELD_X + x,
+                PLAYFIELD_Y + y,
+                CELL_SIZE,
+                CELL_SIZE
+            )
             pygame.draw.rect(self.screen, color, rect)
 
         if self.game_over:
@@ -183,3 +216,4 @@ class SnakeGame:
 
 if __name__ == "__main__":
     SnakeGame().run()
+    
