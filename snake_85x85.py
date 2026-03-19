@@ -27,7 +27,7 @@ BORDER_COLOR = (190, 140, 255)
 GAME_OVER_BG = (50, 0, 70)
 
 # baggrund
-BACKGROUND_CANDIDATES = [
+BACKGROUND_IMAGE = [
     Path("pixil-frame-0.png"),
 ]
 
@@ -43,10 +43,11 @@ class SnakeGame:
 
         self.background = self.load_background()
         self.reset()
-
+        
+    #Load baggrund til samme størrelse som window.
     def load_background(self):
-        """Load the provided image and scale it to the full window size."""
-        for path in BACKGROUND_CANDIDATES:
+       
+        for path in BACKGROUND_IMAGE:
             if path.exists():
                 try:
                     image = pygame.image.load(str(path)).convert()
@@ -54,7 +55,7 @@ class SnakeGame:
                 except pygame.error:
                     pass
 
-        # Fallback in case the image can't be loaded
+        # Fallback hvis baggrunden ik kunne loade
         fallback = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
         fallback.fill((90, 35, 130))
         return fallback
@@ -71,7 +72,7 @@ class SnakeGame:
         self.score = 0
         self.game_over = False
 
-        # start time for this run
+        # start time for enkelt run
         self.start_ticks = pygame.time.get_ticks()
 
         self.spawn_food()
@@ -151,7 +152,7 @@ class SnakeGame:
     def draw(self):
         self.screen.blit(self.background, (0, 0))
 
-        # Reinforce the requested layout so it is visible over the background.
+        # Reinforce the requested layout so it is visible over the background. (very unnessary but i like it)
         pygame.draw.rect(
             self.screen,
             BORDER_COLOR,
