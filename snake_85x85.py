@@ -1,5 +1,6 @@
 import random
 import sys
+import heapq
 from pathlib import Path
 
 import pygame
@@ -28,7 +29,7 @@ GAME_OVER_BG = (50, 0, 70)
 
 # baggrund
 BACKGROUND_IMAGE = [
-    Path("pixil-frame-0.png"),
+    Path("Snake Eksamen/pixil-frame-0 (6).png"),
 ]
 
 
@@ -71,6 +72,10 @@ class SnakeGame:
         self.next_direction = self.direction
         self.score = 0
         self.game_over = False
+        self.ai_enabled = True
+        self.current_path = []
+        self.steps_taken = 0
+        self.paths_found = 0
 
         # start time for enkelt run
         self.start_ticks = pygame.time.get_ticks()
@@ -86,19 +91,136 @@ class SnakeGame:
         ]
         self.food = random.choice(positions)
 
+    def heuristic(self, a, b):
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+    def get_neighbors(self, node, obstacles):
+        x, y = node
+        candidates = [
+            (x + CELL_SIZE, y),
+            (x - CELL_SIZE, y),
+            (x, y + CELL_SIZE),
+            (x, y - CELL_SIZE),
+        ]
+
+        neighbors = []
+        for nx, ny in candidates:
+            if 0 <= nx < GAME_SIZE and 0 <= ny < GAME_SIZE:
+                if (nx, ny) not in obstacles:
+                    neighbors.append((nx, ny))
+
+        return neighbors
+
+    def reconstruct_path(self, came_from, current):
+        path = [current]
+        while current in came_from:
+            current = came_from[current]
+            path.append(current)
+        path.reverse()
+        return path
+
+    def astar(self, start, goal, obstacles):
+        open_set = []
+        heapq.heappush(open_set, (0, start))
+
+        came_from = {}
+        g_score = {start: 0}
+        f_score = {start: self.heuristic(start, goal)}
+        open_set_hash = {start}
+
+        while open_set:
+            current = heapq.heappop(open_set)[1]
+            open_set_hash.remove(current)
+
+            if current == goal:
+                return self.reconstruct_path(came_from, current)
+
+            for neighbor in self.get_neighbors(current, obstacles):
+                tentative_g = g_score[current] + 1
+
+                if neighbor not in g_score or tentative_g < g_score[neighbor]:
+                    came_from[neighbor] = current
+                    g_score[neighbor] = tentative_g
+                    f_score[neighbor] = tentative_g + self.heuristic(neighbor, goal)
+
+                    if neighbor not in open_set_hash:
+                        heapq.heappush(open_set, (f_score[neighbor], neighbor))
+                        open_set_hash.add(neighbor)
+
+        return None
+
+    def path_to_direction(self, path):
+        if not path or len(path) < 2:
+            return self.direction
+
+        current = path[0]
+        next_cell = path[1]
+        return (next_cell[0] - current[0], next_cell[1] - current[1])
+
+    def is_opposite_direction(self, new_dir, current_dir):
+        return new_dir[0] == -current_dir[0] and new_dir[1] == -current_dir[1]
+
+    def get_ai_move(self):
+        head = self.snake[0]
+
+        if len(self.snake) > 1:
+            obstacles = set(self.snake[:-1])
+            obstacles.discard(head)
+        else:
+            obstacles = set()
+
+        path = self.astar(head, self.food, obstacles)
+
+        if path and len(path) >= 2:
+            self.current_path = path
+            self.paths_found += 1
+            return self.path_to_direction(path)
+
+        self.current_path = []
+        possible_moves = [
+            (CELL_SIZE, 0),
+            (-CELL_SIZE, 0),
+            (0, CELL_SIZE),
+            (0, -CELL_SIZE),
+        ]
+
+        for move in possible_moves:
+            if self.is_opposite_direction(move, self.direction):
+                continue
+
+            new_head = (head[0] + move[0], head[1] + move[1])
+
+            if 0 <= new_head[0] < GAME_SIZE and 0 <= new_head[1] < GAME_SIZE:
+                if new_head not in self.snake[:-1]:
+                    return move
+
+        return self.direction
+
+    def end_game(self):
+        self.game_over = True
+        run_time = (pygame.time.get_ticks() - self.start_ticks) / 1000
+
+        with open("game.log", "a") as f:
+            f.write(
+                f"AI: {self.ai_enabled}, Run time: {run_time:.2f} seconds, "
+                f"Score: {self.score}, Steps: {self.steps_taken}, Paths found: {self.paths_found}\n"
+            )
+
     def handle_input(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.KEYDOWN:
-                if self.game_over:
+                if event.key == pygame.K_SPACE and not self.game_over:
+                    self.ai_enabled = not self.ai_enabled
+                elif self.game_over:
                     if event.key == pygame.K_r:
                         self.reset()
                     elif event.key in (pygame.K_ESCAPE, pygame.K_q):
                         pygame.quit()
                         sys.exit()
-                else:
+                elif not self.ai_enabled:
                     if event.key in (pygame.K_UP, pygame.K_w) and self.direction != (0, CELL_SIZE):
                         self.next_direction = (0, -CELL_SIZE)
                     elif event.key in (pygame.K_DOWN, pygame.K_s) and self.direction != (0, -CELL_SIZE):
@@ -112,6 +234,11 @@ class SnakeGame:
         if self.game_over:
             return
 
+        if self.ai_enabled:
+            ai_move = self.get_ai_move()
+            if not self.is_opposite_direction(ai_move, self.direction):
+                self.next_direction = ai_move
+
         self.direction = self.next_direction
         head_x, head_y = self.snake[0]
         dx, dy = self.direction
@@ -119,29 +246,16 @@ class SnakeGame:
 
         # Hit wall
         if not (0 <= new_head[0] < GAME_SIZE and 0 <= new_head[1] < GAME_SIZE):
-            self.game_over = True
-
-            run_time = (pygame.time.get_ticks() - self.start_ticks) / 1000
-            score = self.score
-
-            with open("game.log", "a") as f:
-                f.write(f"Run time: {run_time:.2f} seconds, Score: {score}\n")
-
+            self.end_game()
             return
 
         # Hit self
-        if new_head in self.snake:
-            self.game_over = True
-
-            run_time = (pygame.time.get_ticks() - self.start_ticks) / 1000
-            score = self.score
-
-            with open("game.log", "a") as f:
-                f.write(f"Run time: {run_time:.2f} seconds, Score: {score}\n")
-
+        if new_head in self.snake[:-1] or (new_head == self.snake[-1] and new_head == self.food):
+            self.end_game()
             return
 
         self.snake.insert(0, new_head)
+        self.steps_taken += 1
 
         if new_head == self.food:
             self.score += 1
@@ -167,8 +281,10 @@ class SnakeGame:
 
         # Scoreboard text
         score_text = self.font.render(f"Score: {self.score}", True, SCORE_TEXT)
-        controls_text = self.font.render("Arrows/WASD", True, SCORE_TEXT)
+        ai_text = self.font.render(f"AI: {'ON' if self.ai_enabled else 'OFF'}", True, SCORE_TEXT)
+        controls_text = self.font.render("Space = toggle AI", True, SCORE_TEXT)
         self.screen.blit(score_text, (4, 2))
+        self.screen.blit(ai_text, (140, 2))
         self.screen.blit(controls_text, (WINDOW_WIDTH - controls_text.get_width() - 4, 2))
 
         # Food
